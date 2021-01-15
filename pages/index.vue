@@ -32,7 +32,9 @@
       <p class="delete-info px-4 mt-4">
         Do you really want to delete this task? this can not be undone.
       </p>
-      <button class="py-1 px-4 text-white bg-info mx-3">Yes</button>
+      <button class="py-1 px-4 text-white bg-info mx-3" @click="deleteConfirm">
+        Yes
+      </button>
       <button class="py-1 px-4 text-white bg-danger mx-2">No</button>
     </modal>
 
@@ -49,16 +51,23 @@
       v-for="(item, i) in itemsForList"
       :key="i"
     >
-      <div class="index">{{ i }}</div>
+      <div class="index">{{ i + 1 }}</div>
       <div class="name pr-3">
-        {{ item.header }}
+        {{ item.title }}
       </div>
       <div class="added-at">2020,12-22 6-10 pm</div>
 
       <div class="action d-flex justify-content-between">
         <div class="complete-icon d-inline position-relative">
-          <img src="/noncomplete.png" class="pointer" alt="" />
           <img
+            src="/noncomplete.png"
+            @click="item.completed = !item.completed"
+            class="pointer"
+            alt=""
+          />
+          <img
+            @click="item.completed = !item.completed"
+            v-if="item.completed"
             src="/iscomplete.png"
             class="position-absolute iscomplete-icon pointer"
             alt=""
@@ -67,13 +76,15 @@
         <img
           @click="editTaskModal = !editTaskModal"
           src="/edit.png"
-          class="p-1 pointer"
+          class="p-1 pointer edit-icon"
           alt=""
         />
         <img
-          @click="deleteTaskModal = !deleteTaskModal"
+          @click="
+            (deleteTaskModal = !deleteTaskModal), (deleteItemId = item.id)
+          "
           src="/delete.png"
-          class="pointer"
+          class="pointer delete-icon"
           alt=""
         />
       </div>
@@ -96,12 +107,40 @@ export default {
     addTaskModal: false,
     editTaskModal: false,
     deleteTaskModal: false,
-    perPage: 3,
+    perPage: 10,
     currentPage: 1,
     data: [
       // Accept a Array
-    ]
+    ],
+    deleteItemId: ""
   }),
+  created() {
+    this.$axios
+      .$get("https://jsonplaceholder.typicode.com/todos")
+      .then(res => {
+        this.data = res;
+        console.log(res);
+      })
+      .catch(err => {
+        console.log(err);
+      });
+  },
+  methods: {
+    deleteConfirm() {
+      this.$axios
+        .$delete(
+          `hhttps://jsonplaceholder.typicode.com/posts/${this.deleteItemId}`
+        )
+        .then(res => {
+          console.log(res);
+        })
+        .catch(err => {
+          console.log(err);
+        });
+      this.deleteTaskModal = !this.deleteTaskModal;
+      this.deleteItemId = "";
+    }
+  },
   computed: {
     rows() {
       return this.data.length;
@@ -129,7 +168,7 @@ export default {
 }
 .task-header {
   background: #939393;
-  color: #E0E0E0;
+  color: #e0e0e0;
 }
 .index {
   width: 90px;
@@ -155,5 +194,9 @@ export default {
 }
 .delete-info {
   color: #bcbcbc;
+}
+.edit-icon,
+.delete-icon {
+  height: 26px;
 }
 </style>
