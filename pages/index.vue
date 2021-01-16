@@ -11,8 +11,8 @@
       :modaltoggle="addTaskModal"
       @modalclose="addTaskModal = !addTaskModal"
     >
-      <text-input placeholder="Add To Task"></text-input>
-      <my-button class="mt-4" text="Add"></my-button>
+      <text-input v-model="taskName" placeholder="Add To Task"></text-input>
+      <my-button @click="addTask" class="mt-4" text="Add"></my-button>
     </modal>
     <!-- edit task modal -->
     <modal
@@ -20,8 +20,11 @@
       :modaltoggle="editTaskModal"
       @modalclose="editTaskModal = !editTaskModal"
     >
-      <text-input placeholder="Edit this task"></text-input>
-      <my-button class="mt-4" text="Edit"></my-button>
+      <text-input
+        v-model="editTaskName"
+        placeholder="Edit this task"
+      ></text-input>
+      <my-button @click="editTask" class="mt-4" text="Edit"></my-button>
     </modal>
     <!-- ---delete task modal----- -->
     <modal
@@ -35,7 +38,12 @@
       <button class="py-1 px-4 text-white bg-info mx-3" @click="deleteConfirm">
         Yes
       </button>
-      <button class="py-1 px-4 text-white bg-danger mx-2">No</button>
+      <button
+        class="py-1 px-4 text-white bg-danger mx-2"
+        @click="(deleteTaskModal = !deleteTaskModal), (deleteItemId = '')"
+      >
+        No
+      </button>
     </modal>
 
     <div class="d-flex task-header p-3 my-3 font-weight-bold">
@@ -50,39 +58,38 @@
       class="d-flex task-text p-3  text-capitalize"
       v-for="(item, i) in itemsForList"
       :key="i"
+      :class="{ linethough: item.done == true }"
     >
       <div class="index">{{ i + 1 }}</div>
       <div class="name pr-3">
-        {{ item.title }}
+        {{ item.name }}
       </div>
-      <div class="added-at">2020,12-22 6-10 pm</div>
+      <div class="added-at">{{ item.date }}</div>
 
       <div class="action d-flex justify-content-between">
         <div class="complete-icon d-inline position-relative">
           <img
             src="/noncomplete.png"
-            @click="item.completed = !item.completed"
+            @click="doneHandelar(item.id, true)"
             class="pointer"
             alt=""
           />
           <img
-            @click="item.completed = !item.completed"
-            v-if="item.completed"
+            @click="doneHandelar(item.id, false)"
+            v-if="item.done"
             src="/iscomplete.png"
             class="position-absolute iscomplete-icon pointer"
             alt=""
           />
         </div>
         <img
-          @click="editTaskModal = !editTaskModal"
+          @click="editBtnHandelar(item)"
           src="/edit.png"
           class="p-1 pointer edit-icon"
           alt=""
         />
         <img
-          @click="
-            (deleteTaskModal = !deleteTaskModal), (deleteItemId = item.id)
-          "
+          @click="deleteBtnHandle(item)"
           src="/delete.png"
           class="pointer delete-icon"
           alt=""
@@ -102,6 +109,7 @@
 </template>
 
 <script>
+import firebase from "~/plugins/fire";
 export default {
   data: () => ({
     addTaskModal: false,
@@ -112,34 +120,135 @@ export default {
     data: [
       // Accept a Array
     ],
-    deleteItemId: ""
+    deleteItemId: "",
+    editItemId: "",
+    taskName: "",
+    editTaskName: ""
   }),
-  created() {
-    this.$axios
-      .$get("https://jsonplaceholder.typicode.com/todos")
-      .then(res => {
-        this.data = res;
-        console.log(res);
-      })
-      .catch(err => {
-        console.log(err);
-      });
-  },
   methods: {
-    deleteConfirm() {
-      this.$axios
-        .$delete(
-          `hhttps://jsonplaceholder.typicode.com/posts/${this.deleteItemId}`
-        )
+    deleteBtnHandle(item) {
+      if (item.done) return;
+      this.deleteTaskModal = !this.deleteTaskModal;
+      this.deleteItemId = item.id;
+    },
+    editBtnHandelar(item) {
+      if (item.done) return;
+      this.editTaskModal = !this.editTaskModal;
+      this.editItemId = item.id;
+      this.editTaskName = item.name;
+    },
+    getValue() {
+      firebase
+        .database()
+        .ref("todos")
+        .once("value", todosValue => {
+          todosValue.forEach(element => {
+            let todosGetValue = {
+              name: element.val().name,
+              done: element.val().done,
+              date: element.val().date,
+              id: element.key
+            };
+            this.data.unshift(todosGetValue);
+            console.log(element.val().date);
+          });
+        });
+    },
+    async addTask() {
+      let date = new Date();
+      let timeStamp;
+      if (date.getMinutes() > 12) {
+        timeStamp = "Pm";
+      } else {
+        timeStamp = "Am";
+      }
+
+      let today =
+        date.getDay() +
+        " " +
+        (date.getMonth() + 1) +
+        " " +
+        date.getFullYear() +
+        ", " +
+        date.getHours() +
+        ":" +
+        date.getMinutes() +
+        " " +
+        timeStamp;
+      let taskValue = {
+        name: this.taskName,
+        done: false,
+        date: today
+      };
+
+      await firebase
+        .database()
+        .ref("todos")
+        .push(taskValue)
         .then(res => {
-          console.log(res);
+          let todoTaskAdd = {
+            name: taskValue.name,
+            done: taskValue.done,
+            date: taskValue.date,
+            id: res.key
+          };
+          this.data.unshift(todoTaskAdd);
         })
         .catch(err => {
           console.log(err);
         });
+      this.taskName = "";
+      this.addTaskModal = false;
+    },
+    async deleteConfirm() {
+      await firebase
+        .database()
+        .ref("todos")
+        .child(this.deleteItemId)
+        .remove()
+        .then(() => {
+          this.data.splice(
+            this.data.findIndex(e => e.id == this.deleteItemId),
+            1
+          );
+        });
+
       this.deleteTaskModal = !this.deleteTaskModal;
       this.deleteItemId = "";
+    },
+    async editTask() {
+      if (this.editTaskName == "") {
+        return;
+      }
+      await firebase
+        .database()
+        .ref("todos")
+        .child(this.editItemId)
+        .update({
+          name: this.editTaskName
+        })
+        .then(res => {
+          this.data[
+            this.data.findIndex(e => e.id == this.editItemId)
+          ].name = this.editTaskName;
+        });
+      this.editTaskModal = false;
+    },
+    async doneHandelar(id, p) {
+      await firebase
+        .database()
+        .ref("todos")
+        .child(id)
+        .update({
+          done: p
+        })
+        .then(res => {
+          this.data[this.data.findIndex(e => e.id == id)].done = p;
+        });
     }
+  },
+  created() {
+    this.getValue();
   },
   computed: {
     rows() {
@@ -198,5 +307,8 @@ export default {
 .edit-icon,
 .delete-icon {
   height: 26px;
+}
+.linethough {
+  text-decoration: line-through;
 }
 </style>

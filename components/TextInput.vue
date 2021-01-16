@@ -6,6 +6,7 @@
       :placeholder="placeholder"
       type="text"
       ref="textinput"
+      :value='value'
     />
   </div>
 </template>
