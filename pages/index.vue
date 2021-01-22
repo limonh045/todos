@@ -109,7 +109,7 @@
 </template>
 
 <script>
-import firebase from "~/plugins/fire";
+import  todos  from "~/plugins/fire";
 export default {
   data: () => ({
     addTaskModal: false,
@@ -125,34 +125,18 @@ export default {
     taskName: "",
     editTaskName: ""
   }),
+
   methods: {
     deleteBtnHandle(item) {
       if (item.done) return;
-      this.deleteTaskModal = !this.deleteTaskModal;
       this.deleteItemId = item.id;
+      this.deleteTaskModal = !this.deleteTaskModal;
     },
     editBtnHandelar(item) {
       if (item.done) return;
       this.editTaskModal = !this.editTaskModal;
       this.editItemId = item.id;
       this.editTaskName = item.name;
-    },
-    getValue() {
-      firebase
-        .database()
-        .ref("todos")
-        .once("value", todosValue => {
-          todosValue.forEach(element => {
-            let todosGetValue = {
-              name: element.val().name,
-              done: element.val().done,
-              date: element.val().date,
-              id: element.key
-            };
-            this.data.unshift(todosGetValue);
-            console.log(element.val().date);
-          });
-        });
     },
     async addTask() {
       let date = new Date();
@@ -181,9 +165,7 @@ export default {
         date: today
       };
 
-      await firebase
-        .database()
-        .ref("todos")
+      await todos
         .push(taskValue)
         .then(res => {
           let todoTaskAdd = {
@@ -201,54 +183,55 @@ export default {
       this.addTaskModal = false;
     },
     async deleteConfirm() {
-      await firebase
-        .database()
-        .ref("todos")
+      this.deleteTaskModal = !this.deleteTaskModal;
+
+      this.data.splice(
+        this.data.findIndex(e => e.id == this.deleteItemId),
+        1
+      );
+      await todos
         .child(this.deleteItemId)
         .remove()
-        .then(() => {
-          this.data.splice(
-            this.data.findIndex(e => e.id == this.deleteItemId),
-            1
-          );
+        .then(res => {
+          this.deleteItemId = "";
         });
-
-      this.deleteTaskModal = !this.deleteTaskModal;
-      this.deleteItemId = "";
     },
     async editTask() {
       if (this.editTaskName == "") {
         return;
       }
-      await firebase
-        .database()
-        .ref("todos")
-        .child(this.editItemId)
-        .update({
-          name: this.editTaskName
-        })
-        .then(res => {
-          this.data[
-            this.data.findIndex(e => e.id == this.editItemId)
-          ].name = this.editTaskName;
-        });
-      this.editTaskModal = false;
+      this.data[
+        this.data.findIndex(e => e.id == this.editItemId)
+      ].name = this.editTaskName;
+  this.editTaskModal = false;
+      await todos.child(this.editItemId).update({
+        name: this.editTaskName
+      });
+    
     },
     async doneHandelar(id, p) {
-      await firebase
-        .database()
-        .ref("todos")
-        .child(id)
-        .update({
-          done: p
-        })
-        .then(res => {
-          this.data[this.data.findIndex(e => e.id == id)].done = p;
-        });
+      this.data[this.data.findIndex(e => e.id == id)].done = p;
+      await todos.child(id).update({
+        done: p
+      });
     }
   },
-  created() {
-    this.getValue();
+  mounted() {
+    console.log("mount call");
+    var ci = this;
+    todos.once("value", todosValue => {
+      console.log(todosValue);
+      todosValue.forEach(element => {
+        let todosGetValue = {
+          name: element.val().name,
+          done: element.val().done,
+          date: element.val().date,
+          id: element.key
+        };
+        ci.data.unshift(todosGetValue);
+        console.log(element.val().date);
+      });
+    });
   },
   computed: {
     rows() {
