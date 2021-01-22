@@ -20,8 +20,8 @@
       :modaltoggle="editTaskModal"
       @modalclose="editTaskModal = !editTaskModal"
     >
-      <text-input placeholder="Edit this task"></text-input>
-      <my-button class="mt-4" text="Edit"></my-button>
+      <text-input placeholder="Edit this task" v-model="editTasks"></text-input>
+      <my-button class="mt-4" text="Edit" @click="editConfirm"></my-button>
     </modal>
     <!-- ---delete task modal----- -->
     <modal
@@ -32,10 +32,15 @@
       <p class="delete-info px-4 mt-4">
         Do you really want to delete this task? this can not be undone.
       </p>
-      <button class="py-1 px-4 text-white bg-info mx-3" >
+      <button class="py-1 px-4 text-white bg-info mx-3" @click="deleteConfirm">
         Yes
       </button>
-      <button class="py-1 px-4 text-white bg-danger mx-2">No</button>
+      <button
+        class="py-1 px-4 text-white bg-danger mx-2"
+        @click="(deleteTaskModal = !deleteTaskModal), (deleteItemId = null)"
+      >
+        No
+      </button>
     </modal>
 
     <div class="d-flex task-header p-3 my-3 font-weight-bold">
@@ -50,6 +55,7 @@
       class="d-flex task-text p-3  text-capitalize"
       v-for="(item, i) in itemsForList"
       :key="i"
+      :class="{ delete: item.done }"
     >
       <div class="index">{{ i + 1 }}</div>
       <div class="name pr-3">
@@ -61,20 +67,20 @@
         <div class="complete-icon d-inline position-relative">
           <img
             src="/noncomplete.png"
-            @click="item.completed = !item.completed"
+            @click="isCompleteHandel(item.id, true)"
             class="pointer"
             alt=""
           />
           <img
-            @click="item.completed = !item.completed"
-            v-if="item.completed"
+            @click="isCompleteHandel(item.id, false)"
+            v-if="item.done"
             src="/iscomplete.png"
             class="position-absolute iscomplete-icon pointer"
             alt=""
           />
         </div>
         <img
-          @click="editTaskModal = !editTaskModal"
+          @click="editTaskHandelar(item)"
           src="/edit.png"
           class="p-1 pointer edit-icon"
           alt=""
@@ -107,20 +113,23 @@ export default {
     addTaskModal: false,
     editTaskModal: false,
     deleteTaskModal: false,
-    perPage: 10,
+    perPage: 5,
     currentPage: 1,
     data: [
       // Accept a Array
     ],
     deleteItemId: "",
-    taskVal:'',
+    taskVal: "",
+    editTasks: "",
+    editTaskId: ""
   }),
   created() {
     this.$axios
       .$get("https://todos-62bac-default-rtdb.firebaseio.com/todos.json")
       .then(response => {
         for (const key in response) {
-         this.data.push(response[key])
+          response[key].id = key;
+          this.data.unshift(response[key]);
         }
       })
       .catch(err => {
@@ -128,8 +137,8 @@ export default {
       });
   },
   methods: {
-  async addTask() {
-        let date = new Date();
+    async addTask() {
+      let date = new Date();
       let timeStamp;
       if (date.getMinutes() > 12) {
         timeStamp = "Pm";
@@ -154,17 +163,77 @@ export default {
         date: today
       };
 
-     await this.$axios.$post("https://todos-62bac-default-rtdb.firebaseio.com/todos.json",taskValue)
-      .then(res=>{
-        console.log(res);
-      })
-      .catch(err=>{
-        console.log(err);
-      })
-       this.addTaskModal= !this.addTaskModal
-       this.taskVal=''
+      this.addTaskModal = !this.addTaskModal;
+      await this.$axios
+        .$post(
+          "https://todos-62bac-default-rtdb.firebaseio.com/todos.json",
+          taskValue
+        )
+        .then(res => {
+          taskValue.id = res.name;
+          this.data.unshift(taskValue);
+        })
+        .catch(err => {
+          console.log(err);
+        });
+
+      this.taskVal = "";
+    },
+    editTaskHandelar(item) {
+      if(item.done) return;
+      this.editTasks = item.name;
+      this.editTaskModal = !this.editTaskModal;
+      console.log(item.name);
+      this.editTaskId = item.id;
+    },
+    editConfirm() {
+      this.editTaskModal = !this.editTaskModal;
+      this.data.find(e => e.id == this.editTaskId).name = this.editTasks;
+
+      this.$axios
+        .$patch(
+          `https://todos-62bac-default-rtdb.firebaseio.com/todos/${this.editTaskId}.json`,
+          { name: this.editTasks }
+        )
+        .then(res => {
+          console.log(res);
+        })
+        .catch(err => {
+          console.log(err);
+        });
+    },
+    isCompleteHandel(id, isDone) {
+      this.data.find(e => e.id == id).done = isDone;
+      this.$axios
+        .$patch(
+          `https://todos-62bac-default-rtdb.firebaseio.com/todos/${id}.json`,
+          { done: isDone }
+        )
+        .then(res => {
+          console.log(res);
+        })
+        .catch(err => {
+          console.log(err);
+        });
+    },
+    deleteConfirm() {
+      this.deleteTaskModal = !this.deleteTaskModal;
+      console.log(this.deleteItemId);
+      this.data.splice(
+        this.data.findIndex(e => e.id == this.deleteItemId),
+        1
+      );
+      this.$axios
+        .$delete(
+          `https://todos-62bac-default-rtdb.firebaseio.com/todos/${this.deleteItemId}.json`
+        )
+        .then(res => {
+          console.log(res);
+        })
+        .catch(err => {
+          console.log(err);
+        });
     }
-   
   },
   computed: {
     rows() {
@@ -223,5 +292,8 @@ export default {
 .edit-icon,
 .delete-icon {
   height: 26px;
+}
+.delete {
+  text-decoration: line-through;
 }
 </style>
