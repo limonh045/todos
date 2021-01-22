@@ -11,8 +11,8 @@
       :modaltoggle="addTaskModal"
       @modalclose="addTaskModal = !addTaskModal"
     >
-      <text-input placeholder="Add To Task"></text-input>
-      <my-button class="mt-4" text="Add"></my-button>
+      <text-input placeholder="Add To Task" v-model="taskVal"></text-input>
+      <my-button class="mt-4" @click="addTask" text="Add"></my-button>
     </modal>
     <!-- edit task modal -->
     <modal
@@ -32,7 +32,7 @@
       <p class="delete-info px-4 mt-4">
         Do you really want to delete this task? this can not be undone.
       </p>
-      <button class="py-1 px-4 text-white bg-info mx-3" @click="deleteConfirm">
+      <button class="py-1 px-4 text-white bg-info mx-3" >
         Yes
       </button>
       <button class="py-1 px-4 text-white bg-danger mx-2">No</button>
@@ -53,7 +53,7 @@
     >
       <div class="index">{{ i + 1 }}</div>
       <div class="name pr-3">
-        {{ item.title }}
+        {{ item.name }}
       </div>
       <div class="added-at">2020,12-22 6-10 pm</div>
 
@@ -112,34 +112,59 @@ export default {
     data: [
       // Accept a Array
     ],
-    deleteItemId: ""
+    deleteItemId: "",
+    taskVal:'',
   }),
   created() {
     this.$axios
-      .$get("https://jsonplaceholder.typicode.com/todos")
-      .then(res => {
-        this.data = res;
-        console.log(res);
+      .$get("https://todos-62bac-default-rtdb.firebaseio.com/todos.json")
+      .then(response => {
+        for (const key in response) {
+         this.data.push(response[key])
+        }
       })
       .catch(err => {
         console.log(err);
       });
   },
   methods: {
-    deleteConfirm() {
-      this.$axios
-        .$delete(
-          `hhttps://jsonplaceholder.typicode.com/posts/${this.deleteItemId}`
-        )
-        .then(res => {
-          console.log(res);
-        })
-        .catch(err => {
-          console.log(err);
-        });
-      this.deleteTaskModal = !this.deleteTaskModal;
-      this.deleteItemId = "";
+  async addTask() {
+        let date = new Date();
+      let timeStamp;
+      if (date.getMinutes() > 12) {
+        timeStamp = "Pm";
+      } else {
+        timeStamp = "Am";
+      }
+      let today =
+        date.getDay() +
+        " " +
+        (date.getMonth() + 1) +
+        " " +
+        date.getFullYear() +
+        ", " +
+        date.getHours() +
+        ":" +
+        date.getMinutes() +
+        " " +
+        timeStamp;
+      let taskValue = {
+        name: this.taskVal,
+        done: false,
+        date: today
+      };
+
+     await this.$axios.$post("https://todos-62bac-default-rtdb.firebaseio.com/todos.json",taskValue)
+      .then(res=>{
+        console.log(res);
+      })
+      .catch(err=>{
+        console.log(err);
+      })
+       this.addTaskModal= !this.addTaskModal
+       this.taskVal=''
     }
+   
   },
   computed: {
     rows() {
