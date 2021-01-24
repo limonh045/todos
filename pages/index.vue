@@ -109,13 +109,13 @@
 </template>
 
 <script>
-import  todos  from "~/plugins/fire";
+import todos from "~/plugins/fire";
 export default {
   data: () => ({
     addTaskModal: false,
     editTaskModal: false,
     deleteTaskModal: false,
-    perPage: 10,
+    perPage: 5,
     currentPage: 1,
     data: [
       // Accept a Array
@@ -164,31 +164,20 @@ export default {
         done: false,
         date: today
       };
-
+this.addTaskModal = false;
       await todos
         .push(taskValue)
         .then(res => {
-          let todoTaskAdd = {
-            name: taskValue.name,
-            done: taskValue.done,
-            date: taskValue.date,
-            id: res.key
-          };
-          this.data.unshift(todoTaskAdd);
+          console.log(res);
         })
         .catch(err => {
           console.log(err);
         });
       this.taskName = "";
-      this.addTaskModal = false;
+      
     },
     async deleteConfirm() {
       this.deleteTaskModal = !this.deleteTaskModal;
-
-      this.data.splice(
-        this.data.findIndex(e => e.id == this.deleteItemId),
-        1
-      );
       await todos
         .child(this.deleteItemId)
         .remove()
@@ -197,39 +186,27 @@ export default {
         });
     },
     async editTask() {
-      if (this.editTaskName == "") {
-        return;
-      }
-      this.data[
-        this.data.findIndex(e => e.id == this.editItemId)
-      ].name = this.editTaskName;
-  this.editTaskModal = false;
+      if (this.editTaskName == "") return;
+      this.editTaskModal = !this.editTaskModal;
       await todos.child(this.editItemId).update({
         name: this.editTaskName
       });
-    
     },
     async doneHandelar(id, p) {
-      this.data[this.data.findIndex(e => e.id == id)].done = p;
       await todos.child(id).update({
         done: p
       });
     }
   },
   mounted() {
-    console.log("mount call");
-    var ci = this;
-    todos.once("value", todosValue => {
+    todos.on("value", todosValue => {
+      this.data = [];
       console.log(todosValue);
       todosValue.forEach(element => {
-        let todosGetValue = {
-          name: element.val().name,
-          done: element.val().done,
-          date: element.val().date,
+        this.data.unshift({
+          ...element.val(),
           id: element.key
-        };
-        ci.data.unshift(todosGetValue);
-        console.log(element.val().date);
+        });
       });
     });
   },
