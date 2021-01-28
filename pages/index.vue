@@ -96,7 +96,7 @@
         />
       </div>
     </div>
-
+    <!-- <button @click="tr">try</button> -->
     <b-pagination
       v-model="currentPage"
       :total-rows="rows"
@@ -109,7 +109,7 @@
 </template>
 
 <script>
-import todos from "~/plugins/fire";
+import { todos, db, cd } from "~/plugins/fire";
 export default {
   data: () => ({
     addTaskModal: false,
@@ -164,48 +164,53 @@ export default {
         done: false,
         date: today
       };
-this.addTaskModal = false;
-      await todos
-        .push(taskValue)
-        .then(res => {
-          console.log(res);
+      this.addTaskModal = false;
+
+      await cd
+        .collection("users")
+        .add(taskValue)
+        .then(() => {
+          console.log("User successfully created!");
         })
-        .catch(err => {
-          console.log(err);
+        .catch(error => {
+          console.log(error);
         });
+
       this.taskName = "";
-      
     },
     async deleteConfirm() {
       this.deleteTaskModal = !this.deleteTaskModal;
-      await todos
-        .child(this.deleteItemId)
-        .remove()
-        .then(res => {
-          this.deleteItemId = "";
-        });
+      cd.collection("users")
+        .doc(this.deleteItemId)
+        .delete();
     },
     async editTask() {
       if (this.editTaskName == "") return;
       this.editTaskModal = !this.editTaskModal;
-      await todos.child(this.editItemId).update({
-        name: this.editTaskName
-      });
+      cd.collection("users")
+        .doc(this.editItemId)
+        .update({
+          name: this.editTaskName
+        });
     },
     async doneHandelar(id, p) {
-      await todos.child(id).update({
-        done: p
-      });
+      await cd
+        .collection("users")
+        .doc(id)
+        .update({
+          done: p
+        });
     }
   },
   mounted() {
-    todos.on("value", todosValue => {
+    cd.collection("users").onSnapshot(snapshotChange => {
       this.data = [];
-      console.log(todosValue);
-      todosValue.forEach(element => {
+      snapshotChange.forEach(e => {
+        console.log(e.id);
+        console.log(e.data());
         this.data.unshift({
-          ...element.val(),
-          id: element.key
+          ...e.data(),
+          id: e.id
         });
       });
     });

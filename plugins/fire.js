@@ -1,5 +1,6 @@
 import firebase from "firebase/app";
 import "firebase/database";
+import 'firebase/firestore'
 
 const settings = { timestampsInSnapshots: true };
 
@@ -12,9 +13,12 @@ var firebaseConfig = {
   appId: "1:395355448283:web:c767d70a41a6f4d00cbdfe",
   measurementId: "G-1NKCXMCBJ7"
 };
-// Initialize Firebase
-// firebase.initializeApp(firebaseConfig);
+
   if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
-export default firebase.database().ref('todos');
+// const firebaseApp = firebase.initializeApp(firebaseConfig);
+
+export const todos = firebase.database().ref('todos');
+export const db = firebase;
+export const cd = firebase.firestore();
